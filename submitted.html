@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>D3 Page Template</title>
+         <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+        <style>
+            body {
+              background-color: lightblue;
+            }
+
+            p {
+                color: blue;
+                text-align: center;
+                font-family: sans-serif;
+                font-variant: small-caps;
+                font-weight: bold;
+            }
+
+            form {
+              background-color: lemonchiffon;
+              display: table;
+            }
+
+            #submit {
+              background-color: palegreen;
+              margin-left: 190px;
+              margin-top: 10px;
+            }
+
+            .add-button{
+              margin-top: 10px;
+            }
+        </style>
+        <link rel = "stylesheet" type = "text/css" href = "homepage.css">
+    </head>
+    <body>
+        <p>You have submitted your form!</p>
+        <div id = 'data'></div>
+        <button type = 'button' id = 'display_data'>Dislay Data</button>
+        <script type = 'text/javascript'>
+
+        var button = document.getElementById("display_data");
+        button.addEventListener('click', function(){
+          var userName = prompt('Please enter your user ID to display your schedule');
+          console.log(userName);
+          var stateObj = {state: 'submitted'};
+          history.pushState(stateObj, "", "submitted/"+userName); //changes url
+          location.reload();  //reloads page
+        });
+
+
+        </script>
+
+    </body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>D3 Page Template</title>
+         <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+        <style>
+            body {
+              background-color: lightgrey;
+            }
+
+            p {
+                color: blue;
+                text-align: center;
+                font-family: "Raleway", Arial, sans-serif;
+                font-variant: small-caps;
+                /*font-weight: bold;*/
+            }
+
+                #chart{
+                    width: 800px;
+                    margin: 0 auto;
+                  }
+                  .background {
+                    fill: #eee;
+                  }
+
+                  line {
+                    stroke: #fff;
+                  }
+
+                  text.active {
+                    fill: red;
+                  }
+
+                  .day {
+                    fill: none;
+                    stroke: #ccc;
+                  }
+
+                  .week {
+                    fill: #fff;
+                    opacity: 0;
+                    stroke: none;
+                  }
+
+                  .month {
+                    fill: none;
+                    stroke: #fff;
+                    stroke-width: 4px;
+                  }
+                  .year-title {
+                    font-size: 1.5em;
+                  }
+
+                  /* color ranges */
+                  .RdYlGn .q0-11{fill:rgb(165,0,38)}
+                  .RdYlGn .q1-11{fill:rgb(215,48,39)}
+                  .RdYlGn .q2-11{fill:rgb(244,109,67)}
+                  .RdYlGn .q3-11{fill:rgb(253,174,97)}
+                  .RdYlGn .q4-11{fill:rgb(254,224,139)}
+                  .RdYlGn .q5-11{fill:rgb(255,255,191)}
+                  .RdYlGn .q6-11{fill:rgb(217,239,139)}
+                  .RdYlGn .q7-11{fill:rgb(166,217,106)}
+                  .RdYlGn .q8-11{fill:rgb(102,189,99)}
+                  .RdYlGn .q9-11{fill:rgb(26,152,80)}
+                  .RdYlGn .q10-11{fill:rgb(0,104,55)}
+
+                  /* hover info */
+                  #tooltip {
+                    background-color: #fff;
+                    border: 2px solid #ccc;
+                    padding: 10px;
+                  }
+
+            /*FOR WEEK VIEW*/
+            #week{
+              padding-left: 100px;
+              float: left;
+            }
+            #week-title{
+              padding-left: 100px;
+            }
+            #detail-view{
+              float: right;
+            }
+            .week-day{
+              fill: lightblue;
+              stroke: white;
+            }
+            .time-line{
+              stroke: white;
+              stroke-dasharray: 3,3;
+            }
+            .hours{
+              font-size: 10px;
+              font-family: sans-serif;
+            }
+            .elements{
+              opacity: 0.7;
+
+            }
+            .day_label{
+              font-family: "Raleway", Arial, sans-serif;
+            }
+
+            .assignments{
+              fill: bisque;
+              opacity: 0.5;
+            }
+            .details{
+              font-family: "Raleway", Arial, sans-serif;
+            }
+
+            #data{
+              display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <p>Here is your schedule!</p>
+        <div id = 'data'>{{data}}</div>
+        <div id="chart" class="clearfix"></div>
+        <div id = "week-title"></div>
+        <div id="week"></div>
+        <div id = "detail-view"></div>
+        <script type = 'text/javascript'>
+
+
+
+        //DATA PROCESSING
+        var data = JSON.parse(document.getElementById('data').innerHTML);
+        var processedData = [];
+        data.forEach(function(category){
+          var days = "";
+          if(category.class){
+            var class_list = category.class.split(',');
+            var type_list = category.type.split(',');
+            var time_start_list = category.time_start.split(',');
+            var time_end_list = category.time_end.split(',');
+            for (i = 0; i < class_list.length; i++){
+              if (i == 0){
+                days = category.days1.split(',');
+              }else if (i == 1){
+                days = category.days2.split(',');
+              }else if (i == 2){
+                days = category.days3.split(',');
+              }else{
+                days = category.days4.split(',');
+              }
+              processedData.push({
+                name: class_list[i],
+                type: type_list[i],
+                days: days,
+                time_start: time_start_list[i],
+                time_end: time_end_list[i]
+              });
+            };
+          };
+          if (category.practice){
+            var prac_list = category.practice.split(',');
+            var type = 'Practice';
+            var time_start_list = category.time_start.split(',');
+            var time_end_list = category.time_end.split(',');
+            for (i = 0; i < prac_list.length; i++){
+              if (i == 0){
+                days = category.days1.split(',');
+              }else{
+                days = category.days2.split(',');
+              }
+              processedData.push({
+                name: prac_list[i],
+                type: type,
+                days: days,
+                time_start: time_start_list[i],
+                time_end: time_end_list[i]
+              });
+            };
+          };
+          if(category.assignment){
+            var assignment_list = category.assignment.split(',');
+            var due_date_list = category.due_date.split(',');
+            for (i = 0; i < assignment_list.length; i++){
+              processedData.push({
+                name: assignment_list[i],
+                type: 'Assignment',
+                due_date: due_date_list[i]
+              });
+            };
+          };
+        });
+        console.log(processedData);
+
+        var heatMapData = [];
+        var start_date = new Date (2016,8,12);
+        var end_date = new Date (2016,11,9);
+        processedData.forEach(function(entry){
+          if (entry.type === "Assignment"){
+            var date_arr = entry.due_date.split('-');
+            var date = new Date(date_arr);
+            var add = date.toLocaleString().slice(0,10);
+            heatMapData.push(add);
+          }else{
+            entry.days.forEach(function(day){
+              var current_date = new Date(2016,8,11);
+              while(current_date < end_date){
+                var add = current_date.toLocaleString().slice(0,10);
+                if(day === 'M' && current_date.getDay() == 1){
+                  heatMapData.push(add);
+                }else if(day === 'T' && current_date.getDay() == 2){
+                  heatMapData.push(add);
+                }else if(day === 'W' && current_date.getDay() == 3){
+                  heatMapData.push(add);
+                }else if(day === 'R' && current_date.getDay() == 4){
+                  heatMapData.push(add);
+                }else if (day === 'F' && current_date.getDay() == 5){
+                  heatMapData.push(add);
+                }
+                current_date.setDate(current_date.getDate()+1);
+              }
+
+            });
+          }
+        });
+        console.log(heatMapData);
+        var processedHeatMap = d3.nest()
+          .key(function(d) {
+            var split = String(d).split('/');
+            if(split.length > 1){
+              var year = split[2].slice(0,4);
+              var date = new Date(year, split[0]-1, split[1]);
+              return date;
+            };
+          })
+          .entries(heatMapData);
+        console.log(processedHeatMap);
+
+
+        //HEATMAP
+        var width = 900,
+            cellSize = 25,
+            height = cellSize*15;
+
+        var no_months_in_a_row = Math.floor(width / (cellSize * 7 + 50));
+        var shift_up = cellSize * 3;
+
+        var day = d3.time.format("%w"), // day of the week
+            day_of_month = d3.time.format("%e") // day of the month
+            day_of_year = d3.time.format("%j")
+            week = d3.time.format("%U"), // week number of the year
+            month = d3.time.format("%m"), // month number
+            year = d3.time.format("%Y"),
+            percent = d3.format(".1%"),
+            format = d3.time.format("%Y-%m-%d");
+
+        var heatColorScale = d3.scale.linear().range(["white", "orange"]);
+        var dayExtent = d3.extent(processedHeatMap,function(d){return d.values.length});
+        heatColorScale.domain([dayExtent[0], dayExtent[1]]);
+
+        var color = d3.scale.quantize()
+            .domain([-.05, .05])
+            .range(d3.range(11).map(function(d) { return "q" + d + "-11"; }));
+
+        var svg = d3.select("#chart").selectAll("svg")
+            .data([2016])
+          .enter().append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("class", "RdYlGn")
+          .append("g")
+          .attr("transform", "translate(5, 0)");
+
+          var weeks = svg.selectAll(".week")
+              .data(function(d) {
+                return date = d3.time.weeks(new Date(d, 8, 1), new Date(d+1, 0, 1));
+              })
+              .enter().append("rect")
+              .attr("class", "week")
+              .attr("width", cellSize * 7)
+              .attr("height", cellSize)
+              .attr("x", function(d) {
+                var month_padding = 1.2 *cellSize*7 * ((month(d)-1) % (no_months_in_a_row));
+                return day(d) * cellSize + month_padding
+              })
+              .attr("y", function(d) {
+                var week_diff = week(d) - week(new Date(year(d), month(d)-1, 1) );
+                var row_level = Math.ceil(month(d) / (no_months_in_a_row));
+                // changed row level to
+                return (week_diff*cellSize) + 1*cellSize*8 - cellSize/2 - shift_up;
+              })
+              .on('click', function(d){
+                console.log(d);
+                console.log('clicked');
+              })
+              .datum(format);
+
+        var rect = svg.selectAll(".day")
+            .data(function(d) {
+              return date = d3.time.days(new Date(d, 8, 1), new Date(d + 1, 0, 1));
+            })
+          .enter().append("rect")
+            .attr("class", "day")
+            .attr("width", cellSize)
+            .attr("height", cellSize)
+            .attr("x", function(d, i) {
+              var month_padding = 1.2 * cellSize*7 * ((month(d)-1) % (no_months_in_a_row));
+              // console.log(month(d)-1);
+              // console.log(month(d)%3);
+              // console.log(month_padding);
+              // console.log(day(d));
+              return day(d) * cellSize + month_padding;
+            })
+            .attr("y", function(d) {
+              var week_diff = week(d) - week(new Date(year(d), month(d)-1, 1) );
+              var row_level = Math.ceil(month(d) / (no_months_in_a_row));
+              // console.log(week_diff);
+              // console.log(row_level);
+              //use 1 here instead of row_level for demo
+              //TODO make this dependent on the months specified
+              return (week_diff*cellSize) + 1*cellSize*8 - cellSize/2 - shift_up;
+            })
+            .style('fill', function(d,i){
+              var count = 0;
+              processedHeatMap.forEach(function(entry){
+                var dateObj = new Date(entry.key);
+                if(d.getTime() == dateObj.getTime()){
+                  console.log(dateObj);
+                  count = entry.values.length;
+                  console.log(count)
+                }
+              });
+              // if(count == 0){
+              //   return 'darkgrey';
+              // }
+              // if(count == 1){
+              //   return 'yellow';
+              // } else if(count == 2){
+              //   return 'orange';
+              // }else if (count == 3){
+              //   return 'darkorange';
+              // }else if (count >= 4){
+              //   return 'red';
+              // }
+              console.log(heatColorScale(count));
+              return heatColorScale(count);
+            })
+            .on('click', function(d){
+              //console.log('hello');
+              var s = d.split('-');
+              var newDate = new Date(s[0], s[1]-1, s[2]);
+              var weekday = newDate.getDay();
+              if(weekday == 1){
+                var startDate = newDate;
+                var string = newDate.toString();
+                var intermediate = new Date(string);
+                intermediate.setDate(intermediate.getDate()+4);
+                var endDate = intermediate;
+              }
+              if(weekday == 2){
+                var startString = newDate.toString();
+                var startDate = new Date(startString);
+                startDate.setDate(startDate.getDate() - 1);
+                var endString = newDate.toString();
+                var endDate = new Date(endString);
+                endDate.setDate(endDate.getDate() + 3);
+              }
+              if (weekday == 3){
+                var startString = newDate.toString();
+                var startDate = new Date(startString);
+                startDate.setDate(startDate.getDate() - 2);
+                var endString = newDate.toString();
+                var endDate = new Date(endString);
+                endDate.setDate(endDate.getDate() + 2);
+              }
+              if(weekday == 4){
+                var startString = newDate.toString();
+                var startDate = new Date(startString);
+                startDate.setDate(startDate.getDate() - 3);
+                var endString = newDate.toString();
+                var endDate = new Date(endString);
+                endDate.setDate(endDate.getDate() + 1);
+              }
+              if(weekday == 5){
+                var startString = newDate.toString();
+                var startDate = new Date(startString);
+                startDate.setDate(startDate.getDate() - 4);
+                var endDate = newDate;
+              }
+              clicked(startDate, endDate);
+            })
+            .datum(format);
+
+          //VIEW CONSTRUCTION
+          function clicked (startDate, endDate){
+            document.getElementById('week').innerHTML = "";
+            //document.getElementById('week-title').innerHTML = "Week of "+d;
+            var width = 700;
+            var height = 700;
+            var daySizeW = (width-50)/7;
+            var daySizeH = 400;
+            var svg = d3.select('#week').append('svg')
+                  .attr('width', width)
+                  .attr('height', height);
+            var daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            var hoursOfDay = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+            var lineSpace = daySizeH/24;
+
+            /*processing*/
+            var total_entries = [];
+            for (i = 0; i<processedData.length; i++){
+              if(processedData[i].type !== 'Assignment'){
+                for(j=0; j < processedData[i].days.length; j++){
+                    total_entries.push({
+                      name: processedData[i].name,
+                      type: processedData[i].type,
+                      day: processedData[i].days[j],
+                      time_start: processedData[i].time_start,
+                      time_end: processedData[i].time_end,
+                      overlap: false
+                    });
+                };
+              }
+            };
+            var dates = [];
+            while (startDate <= endDate){
+              var string = startDate.toString();
+              dates.push(new Date(string));
+              startDate.setDate(startDate.getDate()+1);
+            };
+            var assignments = [];
+            for (i = 0; i<processedData.length; i++){
+              if (processedData[i].type === "Assignment"){
+                var assignment_date = processedData[i].due_date.split('-');
+                var d = new Date(assignment_date[0], assignment_date[1]-1, assignment_date[2]);
+                //console.log(d);
+                var include = false;
+                dates.forEach(function(date){
+                  if(d.getTime() == date.getTime()){
+                    include = true;
+                  }
+                });
+                if(include){
+                  assignments.push({
+                    name: processedData[i].name,
+                    due_date: processedData[i].due_date
+                  });
+                }
+              };
+            };
+            /*dectect overlap*/
+            for(i = 0; i<total_entries.length; i++){
+              var current = total_entries[i];
+              for(j = i+1; j<total_entries.length; j++){
+                var compareTo = total_entries[j];
+                if (current.day == compareTo.day){
+                  var current_start = current.time_start.split(':');
+                  var current_end = current.time_end.split(':');
+                  var current_endMin= (parseInt(current_end[0])*60)+parseInt(current_end[1]);
+                  var current_startMin = (parseInt(current_start[0])*60)+parseInt(current_start[1]);
+
+                  var compareTo_start = compareTo.time_start.split(':');
+                  var compareTo_end = compareTo.time_end.split(':');
+                  var compareTo_endMin= (parseInt(compareTo_end[0])*60)+parseInt(compareTo_end[1]);
+                  var compareTo_startMin = (parseInt(compareTo_start[0])*60)+parseInt(compareTo_start[1]);
+
+                  if(current_startMin < compareTo_endMin && compareTo_startMin < current_endMin){
+                    current.overlap = true;
+                    compareTo.overlap = true;
+                  };
+                };
+              };
+            };
+
+
+            /*drawing*/
+            var days = svg.selectAll('rect')
+                        .data(daysOfWeek)
+                        .enter()
+                        .append('rect')
+                        .attr('class', 'week-day')
+                        .attr('width', daySizeW)
+                        .attr('height', daySizeH)
+                        .attr('x', function(d,i){
+                          return i*daySizeW;
+                        })
+                        .attr('y', 10);
+          var labels = svg.selectAll('text')
+                        .data(daysOfWeek)
+                        .enter()
+                        .append('text')
+                        .attr('class', 'day_label')
+                        .text(function(d){
+                          return d;
+                        })
+                        .attr('x', function(d,i){
+                          return (i*daySizeW) + 30;
+                        })
+                        .attr('y', daySizeH+30);
+
+        var time_lines = svg.selectAll('line')
+                                .data(hoursOfDay)
+                                .enter()
+                                .append('line')
+                                .attr('class', 'time-line')
+                                .attr('x1', 0)
+                                .attr('x2', width)
+                                .attr('y1', function(d,i){
+                                  return 10+(lineSpace * i);
+                                })
+                                .attr('y2', function(d,i){
+                                  return 10+(lineSpace * i);
+                                });
+          var hour_labels = svg.selectAll('.hours')
+                              .data(hoursOfDay)
+                              .enter()
+                              .append('text')
+                              .attr('class', 'hours')
+                              .text(function(d,i){
+                                if(i <= 11){
+                                  return d + 'AM';
+                                }else{
+                                  return d + 'PM';
+                                }
+                              })
+                              .attr('x', width - 50 )
+                              .attr('y', function(d,i){
+                                  return (lineSpace*i)+lineSpace;
+                              });
+          var assignment_tab = svg.append('rect')
+                                      .attr('class', 'assignments')
+                                      .attr('x', 0)
+                                      .attr('y', 10)
+                                      .attr('width', daySizeW*7)
+                                      .attr('height', daySizeH/4);
+
+          var assignments_label = svg.append('text')
+                                        .text("Assignments")
+                                        .attr('x', 0-110)
+                                        .attr('y', 20)
+                                        .attr('transform', function(d){
+                                          return 'rotate(-90)';
+                                        });
+          var assignment_contents = svg.selectAll('.assignment-text')
+                                      .data(assignments)
+                                      .enter()
+                                      .append('rect')
+                                      .attr('class', 'assignment')
+                                      .attr('x', function(d){
+                                        var date = d.due_date;
+                                        var spliced = date.split('-');
+                                        var js_date = new Date (spliced[0], spliced[1]-1, spliced[2]);
+                                        var day = js_date.getDay();
+                                        if (day == 0){
+                                          return 30;
+                                        }else if (day == 1){
+                                          return (daySizeW);
+                                        }else if (day == 2){
+                                          return (daySizeW*2);
+                                        }else if (day == 3){
+                                          return (daySizeW*3);
+                                        }else if (day == 4){
+                                          return (daySizeW*4);
+                                        }else if(day == 5){
+                                          return (daySizeW*5);
+                                        }else{
+                                          return (daySizeW*6);
+                                        }
+                                      })
+                                      .attr('y', function(d,i){
+                                        if(i == 0){
+                                          return 10;
+                                        }
+                                        return (i*10)+20;
+                                      })
+                                      .attr('width', daySizeW)
+                                      .attr('height', 10)
+                                      .style('fill', 'darkgrey')
+                                      .append('title')
+                                      .text(function(d){
+                                        return d.name;
+                                      });
+
+          var elements = svg.selectAll('.elements')
+                            .data(total_entries)
+                            .enter()
+                            .append('rect')
+                            .attr('class', 'elements')
+                            .attr('width', 40)
+                            .attr('height', function(d,i){
+                              var start = d.time_start.split(':');
+                              var end = d.time_end.split(':');
+                              var end_minutes = (parseInt(end[0])*60)+parseInt(end[1]);
+                              var start_minutes = (parseInt(start[0])*60)+parseInt(start[1]);
+                              var difference = (end_minutes - start_minutes)/60;;
+                              return difference*lineSpace;
+                            })
+                            .attr('x', function(d,i){
+                              var day = d.day;
+                              if (day === 'S'){
+                                return 30;
+                              }else if (day === 'M'){
+                                return (daySizeW)+30;
+                              }else if (day === 'T'){
+                                return (daySizeW*2)+30;
+                              }else if (day === 'W'){
+                                return (daySizeW*3)+30;
+                              }else if (day === 'R'){
+                                return (daySizeW*4)+30;
+                              }else if(day === 'F'){
+                                return (daySizeW*5)+30;
+                              }else{
+                                return (daySizeW*6)+30;
+                              }
+                            })
+                            .attr('y', function(d,i){
+                              var start = d.time_start.split(':');
+                              var hour_start = parseInt(start[0])+(parseInt(start[1])/60);
+                              return (lineSpace*hour_start)+lineSpace;
+                            })
+                            .style('fill', function(d){
+                              if(d.overlap){
+                                return 'red';
+                              };
+                              if(d.type === 'Lecture'){
+                                return 'lime';
+                              }else if(d.type === 'Lab'){
+                                return 'darkgreen';
+                              }else if(d.type === 'Discussion'){
+                                return 'greenyellow';
+                              }else if(d.type === 'Practice'){
+                                return 'darkblue';
+                              }
+                            })
+                            .style('stroke', function(d){
+                              if (d.overlap){
+                                return 'black';
+                              }else{
+                                return 'none';
+                              }
+                            })
+                            .on('click', function(d){
+                              var el = d;
+                              document.getElementById('detail-view').innerHTML = "";
+                              var svg = d3.select('#detail-view').append('svg')
+                                    .attr('width', width/3)
+                                    .attr('height', height/4);
+                              var rect = svg.append('rect')
+                                    .attr('width', width/2)
+                                    .attr('height', height/2)
+                                    .attr('x', 0)
+                                    .attr('y', 0)
+                                    .attr('class', 'title')
+                                    .style('fill', function(){
+                                      if(el.overlap){
+                                        return 'lightcoral'
+                                      }else{
+                                        return 'lightblue';
+                                      }
+                                    });
+                              var title = svg.append('text')
+                                  .attr('class', 'details')
+                                  .attr('x', 10)
+                                  .attr('y', 15)
+                                  .text('Details');
+                              var i = 35;
+                              for (var prop in d){
+                                var property = "";
+                                if (prop === 'time_start'){
+                                  property = 'Start Time';
+                                }else if(prop === 'time_end'){
+                                  property = 'End Time';
+                                }else if(prop === 'overlap'){
+                                  property = 'Conflict'
+                                }else if (prop === 'type'){
+                                  property = 'Type';
+                                }else if (prop === 'day'){
+                                  property = 'Day';
+                                }else if (prop === 'name'){
+                                  property = 'Item';
+                                }
+                                var details = svg.append('text')
+                                          .attr('x', 10)
+                                          .attr('y', i)
+                                          .attr('class', 'details')
+                                          .text(property+" : "+d[prop]);
+                                i = i+20;
+                              }
+
+                            })
+                            .append('title')
+                            .text(function(d){
+                              if(d.overlap){
+                                return 'CONFLICT: ' + d.name;
+                              }else{
+                                return d.name;
+                              }
+                            });
+                // d3.event.stopPropagation();
+
+
+          }
+
+
+        </script>
+
+    </body>
+</html>
